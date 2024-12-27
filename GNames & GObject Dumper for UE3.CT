@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CheatTable CheatEngineTableVersion="31">
+  <CheatEntries>
+    <CheatEntry>
+      <ID>0</ID>
+      <Description>"Dump GNames and GObjects"</Description>
+      <LastState/>
+      <Color>808000</Color>
+      <VariableType>Auto Assembler Script</VariableType>
+      <AssemblerScript Async="1">// Started : 2020-06-29
+[ENABLE]
+
+{$LUA}
+
+--[[
+  big-dick credits to TheFeckless for the original UE3 sdk!
+  original link/video
+    https://www.youtube.com/watch?v=yNe4jz1v0R4
+    https://www.unknowncheats.me/forum/unreal-engine-3-a/71911-thefeckless-ue3-sdk-generator.html
+  wip port by happyTugs
+    https://fearlessrevolution.com/viewtopic.php?f=15&amp;t=12955
+
+  notes:
+  GObjects: 0x01417620 //offset to pointer for GObjects (SMNC)
+  GNames: 0x01429664 // offset to pointer for GNames (SMNC)
+  ProcessEvent: 0x0046FD30
+  ProcessEventIndex: EC
+  UEngine: 0x0143B20C // optional (Search for "nosound" enable unicode!)
+]]
+
+if not syntaxcheck and process ~= nil then
+
+  local GObjects = 0x01417620
+  local GNames = 0x01429664
+  local isWideString = false
+  local Path = 'C:\\Users\\NAME\\Desktop\\'
+
+  local TArray = {}
+    TArray.Data = 0x0
+    TArray.Num = 0x4
+    TArray.Max = 0x8
+  local UObject = {}
+    UObject.Outer = 0x24
+    UObject.FNameIndex = 0x28
+    UObject.Unknown = 0x2C
+    UObject.Class = 0x30
+  local UClass = {}
+    UClass.FNameIndex = 0x28
+  local FNameEntry = {}
+    FNameEntry.Name = 0x10
+  local NameEnums = {}
+
+  local function GetOuterName(pOuterObject) -- recursive function
+    if pOuterObject == nil then return '' end
+    local OuterNameIndex = readInteger(pOuterObject + UObject.FNameIndex)
+    if NameEnums[OuterNameIndex] ~= nil then
+      if readInteger(pOuterObject + UObject.Outer) ~= 0 then
+        return GetOuterName(readPointer(pOuterObject + UObject.Outer))..'.'..NameEnums[OuterNameIndex]
+      else
+        return NameEnums[OuterNameIndex]
+      end
+    else
+      return ''
+    end
+  end
+
+  local function GetName(pFNameIndex)
+    if NameEnums[pFNameIndex] == nil then
+      return 'Invalid Name Index'
+    else
+      return NameEnums[pFNameIndex]
+    end
+  end
+
+  local function ObjectsDump()
+    local file,err = io.open(string.format('%s[%s] ObjectsDump.txt ',Path,process), 'w')
+    assert(file,err)
+    file:write(string.format('Process: %s\nTimeStamp: %s\n\n\n',process,os.date()))
+    local UObjectsArray = readPointer(GObjects + TArray.Data)
+    local GObjectsNum = readInteger(GObjects + TArray.Num)
+    local currOffset = 0x0
+    local count = 0
+    for i=0, GObjectsNum do --no multi-initializations, cries in c
+      local currObject = readPointer(UObjectsArray + currOffset)
+      if currObject ~= nil and currObject ~= 0 then
+        local NameIndex = readInteger(currObject + UObject.FNameIndex)
+        local ClassNameIndex = readInteger(readPointer(currObject + UObject.Class) + UClass.FNameIndex)
+        local OuterObject = readPointer(currObject + UObject.Outer)
+        file:write(string.format('UObject[%06i]%70s %s  0x%08X\n',i,GetName(ClassNameIndex),GetOuterName(OuterObject)..'.'..GetName(NameIndex),currObject))
+        count = count + 1
+      end
+      currOffset = currOffset + 0x4
+    end
+    local totalStr = string.format('Total: %06i UObject(s) dumped!',count)
+    file:write('\n'..totalStr)
+    file:close()
+    print(totalStr)
+  end
+
+  local function NamesDump()
+    local file,err = io.open(string.format('%s[%s] NamesDump.txt ',Path,process), 'w')
+    assert(file,err)
+    file:write(string.format('Process: %s\nTimeStamp: %s\n\n\n',process,os.date()))
+    local FNamesArray = readPointer(GNames + TArray.Data)
+    local GNamesNum = readInteger(GNames + TArray.Num)
+    local currOffset = 0x0
+    local count = 0
+    for i=0, GNamesNum do --no multi-initializations, cries in c
+      local currString = readString(readPointer(FNamesArray + currOffset) + FNameEntry.Name, 256, isWideString)
+      if currString ~= nil then
+        file:write(string.format('FName[%06i] %s\n',i,currString))
+        NameEnums[i] = currString
+        count = count + 1
+      end
+      currOffset = currOffset + 0x4
+    end
+    local totalStr = string.format('Total: %06i FName(s) dumped!',count)
+    file:write('\n'..totalStr)
+    file:close()
+    print(totalStr)
+  end
+
+  NamesDump()
+  ObjectsDump()
+  collectgarbage('collect')
+
+end
+
+[DISABLE]
+
+
+
+</AssemblerScript>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>1</ID>
+      <Description>"Hook"</Description>
+      <LastState/>
+      <Color>808000</Color>
+      <VariableType>Auto Assembler Script</VariableType>
+      <AssemblerScript>// Started : 2020-06-29
+[ENABLE]
+
+aobscanmodule(GObjectsHook,$process,A1 ?? ?? ?? ?? 8B ?? ?? 8B ?? ?? 25 00 02 00 00)
+aobscanmodule(GNamesHook,$process,8B 0D ?? ?? ?? ?? 83 3C 81 00 74)
+aobscanmodule(ProcessEventHook,$process,74 ?? 83 C0 07 83 E0 F8 E8 ?? ?? ?? ?? 8B C4 6A 00 50 6A 00 53)
+registersymbol(ProcessEventHook)
+
+label(GObjects)
+label(GNames)
+label(ProcessEvent)
+registersymbol(GObjects)
+registersymbol(GNames)
+registersymbol(ProcessEvent)
+
+GObjectsHook+1:
+GObjects:
+
+GNamesHook+2:
+GNames:
+
+ProcessEventHook-CE:
+ProcessEvent:
+
+[DISABLE]
+
+unregistersymbol(GObjects)
+</AssemblerScript>
+      <CheatEntries>
+        <CheatEntry>
+          <ID>5</ID>
+          <Description>"GObjects"</Description>
+          <LastState Value="" RealAddress="00000000"/>
+          <Color>808080</Color>
+          <GroupHeader>1</GroupHeader>
+          <Address>[GObjects]</Address>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>7</ID>
+          <Description>"GNames"</Description>
+          <LastState Value="" RealAddress="00000000"/>
+          <Color>808080</Color>
+          <GroupHeader>1</GroupHeader>
+          <Address>[GNames]</Address>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>6</ID>
+          <Description>"ProcessEvent"</Description>
+          <LastState Value="" RealAddress="00000000"/>
+          <Color>808080</Color>
+          <GroupHeader>1</GroupHeader>
+          <Address>ProcessEvent</Address>
+        </CheatEntry>
+      </CheatEntries>
+    </CheatEntry>
+  </CheatEntries>
+  <UserdefinedSymbols/>
+</CheatTable>
