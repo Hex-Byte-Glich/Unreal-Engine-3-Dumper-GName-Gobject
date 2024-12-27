@@ -3,7 +3,7 @@
 # step 1
 
 -- Change GName, GObjects, ProcessEvent, ProcessEventIndex, UEngine (if the game need to use this for dumper);
--- Change GName, GObjects;
+|| -- Change GName, GObjects;
 
 #step 2
 
