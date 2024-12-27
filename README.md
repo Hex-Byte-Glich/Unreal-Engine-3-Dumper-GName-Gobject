@@ -8,6 +8,13 @@
 #step 2
 
 ```
+if not syntaxcheck and process ~= nil then
+
+  local GObjects = 0x01417620
+  local GNames = 0x01429664
+  local isWideString = false
+  local Path = 'C:\\Users\\NAME\\Desktop\\'
+
   local TArray = {}
     TArray.Data = 0x0
     TArray.Num = 0x4
